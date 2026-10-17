@@ -8,11 +8,12 @@ import ta
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
+# Render Free Hosting Flask Server
 app_web = Flask(__name__)
 
 @app_web.route('/')
 def home():
-    return "Exness Gold Trading Bot Active!"
+    return "Exness Gold Bot is Running Free & Active!"
 
 def run_flask():
     port = int(os.environ.get("PORT", 8080))
@@ -22,17 +23,14 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8969292356:AAFovvKTKKf1nUG1l5
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-last_signal = None
-
-def get_exness_gold_analysis():
+def get_gold_analysis():
     try:
-        # Fetch Gold Data
-        df = yf.download(tickers='GC=F', period='5d', interval='5m')
+        df = yf.download(tickers='GC=F', period='2d', interval='5m')
         if df.empty:
-            df = yf.download(tickers='XAUUSD=X', period='5d', interval='5m')
+            df = yf.download(tickers='XAUUSD=X', period='2d', interval='5m')
             
         if df.empty:
-            return 4181.10, 50.0, "NEUTRAL (WAIT)"
+            return "Market Data abhi unavailable hai (Weekend/Market Closed)."
         
         close_prices = df['Close'].squeeze()
         rsi_series = ta.momentum.RSIIndicator(close=close_prices, window=14).rsi()
@@ -46,56 +44,25 @@ def get_exness_gold_analysis():
         elif current_rsi >= 68:
             signal = "🔴 SELL SIGNAL"
             
-        return current_price, current_rsi, signal
+        return (
+            f"📊 **Exness Gold (XAU/USD) Live Status**\n\n"
+            f"💵 Price: ${current_price:.2f}\n"
+            f"📈 RSI (14): {current_rsi:.2f}\n"
+            f"💡 Signal: **{signal}**"
+        )
     except Exception as e:
-        logging.error(f"Data error: {e}")
-        return 4181.10, 50.0, "NEUTRAL (WAIT)"
+        return f"Market analyze karne me error aaya: {e}"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    
-    # Existing job handle karne ke liye
-    jobs = context.job_queue.get_jobs_by_name(str(chat_id))
-    for job in jobs:
-        job.schedule_removal()
-        
-    context.job_queue.run_repeating(auto_market_monitor, interval=60, first=3, chat_id=chat_id, name=str(chat_id))
-    
     await update.message.reply_text(
-        "⚡ **Exness Gold AI Assistant Active!**\n\n"
-        "✅ Automatic Live Market Monitoring Started!\n"
-        "Bot har 1 minute me Gold market check karega.\n"
-        "Jab bhi BUY ya SELL signal milega, aapko notification mil jayegi.\n\n"
-        "📌 Command: /status - Instant Gold Price Check"
+        "👋 **Namaste! Exness Gold Bot Active Ho Gaya Hai!**\n\n"
+        "Commands:\n"
+        "👉 /status - Live Gold (XAUUSD) Price & Buy/Sell Recommendation Check Karein."
     )
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    price, rsi, signal = get_exness_gold_analysis()
-    
-    msg = (
-        f"📊 **Exness Gold (XAU/USD) Analysis**\n\n"
-        f"💵 Live Price: ${price:.2f}\n"
-        f"📉 RSI (14): {rsi:.2f}\n"
-        f"💡 Recommendation: **{signal}**"
-    )
-    await update.message.reply_text(msg, parse_mode='Markdown')
-
-async def auto_market_monitor(context: ContextTypes.DEFAULT_TYPE):
-    global last_signal
-    chat_id = context.job.chat_id
-    
-    price, rsi, signal = get_exness_gold_analysis()
-    if signal in ["🟢 BUY SIGNAL", "🔴 SELL SIGNAL"] and signal != last_signal:
-        alert_msg = (
-            f"🚨 **EXNESS TRADE ALERT** 🚨\n\n"
-            f"🪙 Pair: Gold (XAU/USD)\n"
-            f"💥 Signal: **{signal}**\n"
-            f"💵 Price: ${price:.2f}\n"
-            f"📊 RSI: {rsi:.2f}\n\n"
-            f"⚡ Exness app me immediate trade place kar sakte hain!"
-        )
-        await context.bot.send_message(chat_id=chat_id, text=alert_msg, parse_mode='Markdown')
-        last_signal = signal
+    response_msg = get_gold_analysis()
+    await update.message.reply_text(response_msg, parse_mode='Markdown')
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
@@ -105,8 +72,8 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("status", status))
     
-    print("Bot is running...")
-    app.run_polling()
+    print("Bot polling started...")
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
