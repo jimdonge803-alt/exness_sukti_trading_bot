@@ -1,7 +1,5 @@
 import logging
 import os
-import time
-import asyncio
 import threading
 from flask import Flask
 import yfinance as yf
@@ -10,6 +8,7 @@ import ta
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
+# Web Server Render ke liye
 app_web = Flask(__name__)
 
 @app_web.route('/')
@@ -20,16 +19,15 @@ def run_flask():
     port = int(os.environ.get("PORT", 8080))
     app_web.run(host='0.0.0.0', port=port)
 
+# Telegram Bot Token
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8969292356:AAFovvKTKKf1nUG1l5IYBDZtutwPsJMalJE")
-# Aapka Telegram Chat ID jahan auto alerts aayenge
-CHAT_ID = None  
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 last_signal = None
 
 def get_exness_gold_analysis():
-    # Fetch Gold Spot Price
+    # Exness Real Time Gold Spot Price Data
     df = yf.download(tickers='XAUUSD=X', period='1d', interval='5m')
     if df.empty:
         df = yf.download(tickers='GC=F', period='1d', interval='5m')
@@ -52,12 +50,13 @@ def get_exness_gold_analysis():
     return current_price, current_rsi, signal
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global CHAT_ID
-    CHAT_ID = update.message.chat_id
+    chat_id = update.message.chat_id
+    context.job_queue.run_repeating(auto_market_monitor, interval=60, first=5, chat_id=chat_id)
+    
     await update.message.reply_text(
         "⚡ **Exness Gold Automation Active!**\n\n"
-        "Mai har 1 minute me Exness Gold Market analyze karunga.\n"
-        "Jab bhi BUY ya SELL ka solid signal milega, mai aapko instant notification bhej dunga!"
+        "Bot har 1 minute me Exness Gold Market check karega.\n"
+        "Jab bhi BUY ya SELL signal milega, aapko instant alert bhej dega!"
     )
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -74,40 +73,33 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(msg, parse_mode='Markdown')
 
-# Background Loop jo continuous market analyze karke auto-alert bhejega
-async def auto_market_monitor(app):
-    global last_signal, CHAT_ID
-    while True:
-        try:
-            if CHAT_ID:
-                price, rsi, signal = get_exness_gold_analysis()
-                if signal in ["BUY", "SELL"] and signal != last_signal:
-                    alert_msg = (
-                        f"🚨 **EXNESS TRADE SIGNAL ALERT** 🚨\n\n"
-                        f"🪙 **Pair:** Gold (XAU/USD)\n"
-                        f"💥 **Signal:** {signal} NOW\n"
-                        f"💵 **Price:** ${price:.2f}\n"
-                        f"📊 **RSI:** {rsi:.2f}\n\n"
-                        f"⚠️ Exness me immediate {signal} entry le sakte hain!"
-                    )
-                    await app.bot.send_message(chat_id=CHAT_ID, text=alert_msg, parse_mode='Markdown')
-                    last_signal = signal
-        except Exception as e:
-            logging.error(f"Error in monitor: {e}")
-        await asyncio.sleep(60) # Har 60 second me check karega
+# Automatic Background Job (JobQueue)
+async def auto_market_monitor(context: ContextTypes.DEFAULT_TYPE):
+    global last_signal
+    chat_id = context.job.chat_id
+    
+    price, rsi, signal = get_exness_gold_analysis()
+    if signal in ["BUY", "SELL"] and signal != last_signal:
+        alert_msg = (
+            f"🚨 **EXNESS TRADE SIGNAL ALERT** 🚨\n\n"
+            f"🪙 **Pair:** Gold (XAU/USD)\n"
+            f"💥 **Signal:** {signal} NOW\n"
+            f"💵 **Price:** ${price:.2f}\n"
+            f"📊 **RSI:** {rsi:.2f}\n\n"
+            f"⚠️ Exness me immediate {signal} trade laga sakte hain!"
+        )
+        await context.bot.send_message(chat_id=chat_id, text=alert_msg, parse_mode='Markdown')
+        last_signal = signal
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
     
     app = Application.builder().token(TELEGRAM_TOKEN).build()
+    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("status", status))
     
-    # Run auto background monitoring task
-    loop = asyncio.get_event_loop()
-    loop.create_task(auto_market_monitor(app))
-    
-    print("Bot fully automated and active...")
+    print("Bot starting polling...")
     app.run_polling()
 
 if __name__ == '__main__':
