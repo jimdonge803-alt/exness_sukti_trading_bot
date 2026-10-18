@@ -13,7 +13,7 @@ app_web = Flask(__name__)
 
 @app_web.route('/')
 def home():
-    return "Exness Sukti Super AI Mentor is Active 24/7!"
+    return "Exness Sukti Super AI Mentor is Active!"
 
 def run_flask():
     port = int(os.environ.get("PORT", 8080))
@@ -28,7 +28,6 @@ last_signal = None
 
 def get_super_ai_analysis(user_id=None):
     try:
-        # Fetch 15M and 1H timeframe data for Gold
         df_15m = yf.download(tickers='GC=F', period='5d', interval='15m')
         df_1h = yf.download(tickers='GC=F', period='5d', interval='1h')
         
@@ -42,10 +41,8 @@ def get_super_ai_analysis(user_id=None):
         close_15 = df_15m['Close'].squeeze()
         high_15 = df_15m['High'].squeeze()
         low_15 = df_15m['Low'].squeeze()
-        
         close_1h = df_1h['Close'].squeeze()
         
-        # Technical Indicators Calculation
         rsi = ta.momentum.RSIIndicator(close=close_15, window=14).rsi().iloc[-1]
         ema_fast = ta.trend.EMAIndicator(close=close_15, window=9).ema_indicator().iloc[-1]
         ema_slow = ta.trend.EMAIndicator(close=close_15, window=21).ema_indicator().iloc[-1]
@@ -59,21 +56,17 @@ def get_super_ai_analysis(user_id=None):
         current_price = float(close_15.iloc[-1])
         rsi_val = float(rsi)
         
-        # Support & Resistance Levels
         res_level = float(high_15.tail(20).max())
         sup_level = float(low_15.tail(20).min())
         
-        # Super AI Multi-Indicator Signal Logic
         action = "NEUTRAL (WAIT)"
         score = 0
         
-        # Bullish Confluences
         if ema_fast > ema_slow: score += 1
         if current_price > ema_trend: score += 1
         if macd_hist > 0: score += 1
         if rsi_val < 45: score += 1
         
-        # Bearish Confluences
         if ema_fast < ema_slow: score -= 1
         if current_price < ema_trend: score -= 1
         if macd_hist < 0: score -= 1
@@ -94,9 +87,8 @@ def get_super_ai_analysis(user_id=None):
             tp1 = current_price - (1.5 * atr)
             tp2 = current_price - (3.0 * atr)
             
-        # Risk & Lot Size Calculation
-        balance = user_balances.get(user_id, 100) # Default $100
-        risk_amount = balance * 0.02 # 2% risk
+        balance = user_balances.get(user_id, 100)
+        risk_amount = balance * 0.02
         sl_pips = abs(current_price - sl) if sl != 0 else 1.0
         lot_size = round(risk_amount / (sl_pips * 100), 2)
         if lot_size < 0.01: lot_size = 0.01
@@ -129,14 +121,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         "🚀 **EXNESS SUKTI SUPER AI MENTOR ACTIVE!**\n\n"
-        "🔥 **Duniya Ka Sabse Advanced Gold Trading Bot** 🔥\n\n"
         "⚡ Multi-Timeframe Analysis (5M + 15M + 1H)\n"
         "📊 Multi-Indicator (EMA + RSI + MACD + S/R + ATR)\n"
         "💰 Custom Risk & Lot Size Calculator\n"
         "🔔 24/7 Live High-Probability Trade Alerts\n\n"
         "📌 **Commands:**\n"
-        "👉 `/status` - Live Super AI Setup Check Karein\n"
-        "👉 `/setbalance <amount>` - Balance set karein (e.g. `/setbalance 500`)"
+        "👉 `/status` - Live Setup Check Karein\n"
+        "👉 `/setbalance <amount>` - Balance Set Karein (e.g. `/setbalance 500`)"
     )
 
 async def set_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -144,26 +135,28 @@ async def set_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         balance = float(context.args[0])
         user_balances[user_id] = balance
-        await update.message.reply_text(f"✅ Exness Account Balance successfully set to: **${balance:.2f}**\nBot ab aapke risk ke mutabiq exact lot size calculate karega!")
+        await update.message.reply_text(f"✅ Account Balance set: **${balance:.2f}**\nSafe Lot Size calculate ho jayega!")
     except (IndexError, ValueError):
-        await update.message.reply_text("❌ Please format sahi likhein: `/setbalance 100` (Apna balance likhein)")
+        await update.message.reply_text("❌ Example format: `/setbalance 100`")
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     data = get_super_ai_analysis(user_id)
     
     if not data:
-        await update.message.reply_text("Market data fetch ho raha hai, please 30 second me try karein.")
+        await update.message.reply_text("Market data fetch ho raha hai, please 30 seconds baad try karein.")
         return
         
     price = data['price']
     action = data['action']
+    sup = data['sup']
+    res = data['res']
     
     msg = (
         f"🤖 **SUPER AI GOLD (XAU/USD) ANALYSIS**\n\n"
         f"💵 Live Exness Price: **${price:.2f}**\n"
-        f"📈 RSI: **{data['rsi']:.2f}** | Signal Strength: **{data['score']}/4**\n"
-        f"🛡️ Support: **${data['sup']:.2f}** \vert{} Resistance: **${data['res']:.2f}**\n\n"
+        f"📈 RSI: **{data['rsi']:.2f}** | Signal Score: **{data['score']}/4**\n"
+        f"🛡️ Support: **${sup:.2f}** \vert{} Resistance: **${res:.2f}**\n\n"
         f"🎯 Signal: **{action}**\n"
     )
     
@@ -176,17 +169,17 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🚀 Take Profit 2 (TP2): **${data['tp2']:.2f}**\n\n"
             f"📐 **RISK MANAGEMENT (Balance: ${data['balance']:.2f}):**\n"
             f"⚖️ Safe Lot Size: **{data['lot_size']} Lot** (2% Max Risk)\n\n"
-            f"⚡ Direct Exness app me ye setup place karein!"
+            f"⚡ Direct Exness App me trade enter karein!"
         )
     else:
-        msg += "\n⏳ **AI Mentor Status:** Market range bound hai. Clear breakout ya trend confirmation ka wait karein!"
+        msg += "\n⏳ **AI Mentor Status:** Market range-bound hai. Clear confirmation par alert aayega!"
         
     await update.message.reply_text(msg, parse_mode='Markdown')
 
 async def auto_market_monitor(context: ContextTypes.DEFAULT_TYPE):
     global last_signal
     chat_id = context.job.chat_id
-    user_id = update.message.from_user.id if 'update' in locals() else chat_id
+    user_id = chat_id
     
     data = get_super_ai_analysis(user_id)
     if data and data['action'] in ["🟢 STRONG BUY", "🔴 STRONG SELL"]:
@@ -200,7 +193,7 @@ async def auto_market_monitor(context: ContextTypes.DEFAULT_TYPE):
                 f"🎯 TP1: **${data['tp1']:.2f}**\n"
                 f"🚀 TP2: **${data['tp2']:.2f}**\n\n"
                 f"📐 Safe Lot Size: **{data['lot_size']}**\n"
-                f"⚡ Immediate Exness account me trade enter karein!"
+                f"⚡ Immediate Exness trade place karein!"
             )
             await context.bot.send_message(chat_id=chat_id, text=alert_msg, parse_mode='Markdown')
             last_signal = data['action']
@@ -214,7 +207,7 @@ def main():
     app.add_handler(CommandHandler("status", status))
     app.add_handler(CommandHandler("setbalance", set_balance))
     
-    print("Super AI Bot is Running...")
+    print("Sukti Super AI Bot is Running...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
