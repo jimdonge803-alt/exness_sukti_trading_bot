@@ -120,14 +120,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.job_queue.run_repeating(auto_market_monitor, interval=60, first=3, chat_id=chat_id, name=str(chat_id))
     
     await update.message.reply_text(
-        "🚀 **EXNESS SUKTI SUPER AI MENTOR ACTIVE!**\n\n"
-        "⚡ Multi-Timeframe Analysis (5M + 15M + 1H)\n"
-        "📊 Multi-Indicator (EMA + RSI + MACD + S/R + ATR)\n"
-        "💰 Custom Risk & Lot Size Calculator\n"
-        "🔔 24/7 Live High-Probability Trade Alerts\n\n"
-        "📌 **Commands:**\n"
-        "👉 `/status` - Live Setup Check Karein\n"
-        "👉 `/setbalance <amount>` - Balance Set Karein (e.g. `/setbalance 500`)"
+        "🚀 Exness Sukti Super AI Mentor Active!\n\n"
+        "⚡ Multi-Timeframe Analysis Active\n"
+        "📊 Multi-Indicator Analysis Active\n"
+        "💰 Custom Risk Calculator Active\n\n"
+        "📌 Commands:\n"
+        "👉 /status - Check Live Market Signal\n"
+        "👉 /setbalance 100 - Set Balance"
     )
 
 async def set_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -135,9 +134,9 @@ async def set_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         balance = float(context.args[0])
         user_balances[user_id] = balance
-        await update.message.reply_text(f"✅ Account Balance set: **${balance:.2f}**\nSafe Lot Size calculate ho jayega!")
+        await update.message.reply_text(f"✅ Account Balance set to: ${balance:.2f}")
     except (IndexError, ValueError):
-        await update.message.reply_text("❌ Example format: `/setbalance 100`")
+        await update.message.reply_text("❌ Example format: /setbalance 100")
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -153,28 +152,28 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     res = data['res']
     
     msg = (
-        f"🤖 **SUPER AI GOLD (XAU/USD) ANALYSIS**\n\n"
-        f"💵 Live Exness Price: **${price:.2f}**\n"
-        f"📈 RSI: **{data['rsi']:.2f}** | Signal Score: **{data['score']}/4**\n"
-        f"🛡️ Support: **${sup:.2f}** \vert{} Resistance: **${res:.2f}**\n\n"
-        f"🎯 Signal: **{action}**\n"
+        f"🤖 SUPER AI GOLD (XAU/USD) ANALYSIS\n\n"
+        f"💵 Live Exness Price: ${price:.2f}\n"
+        f"📈 RSI: {data['rsi']:.2f} | Score: {data['score']}/4\n"
+        f"🛡️ Support: ${sup:.2f} | Resistance: ${res:.2f}\n\n"
+        f"🎯 Signal: {action}\n"
     )
     
     if action in ["🟢 STRONG BUY", "🔴 STRONG SELL"]:
         msg += (
-            f"\n📍 **EXACT ENTRY SETUP:**\n"
-            f"💵 Entry: **${price:.2f}**\n"
-            f"🛑 Stop Loss (SL): **${data['sl']:.2f}**\n"
-            f"🎯 Take Profit 1 (TP1): **${data['tp1']:.2f}**\n"
-            f"🚀 Take Profit 2 (TP2): **${data['tp2']:.2f}**\n\n"
-            f"📐 **RISK MANAGEMENT (Balance: ${data['balance']:.2f}):**\n"
-            f"⚖️ Safe Lot Size: **{data['lot_size']} Lot** (2% Max Risk)\n\n"
+            f"\n📍 EXACT ENTRY SETUP:\n"
+            f"💵 Entry: ${price:.2f}\n"
+            f"🛑 Stop Loss (SL): ${data['sl']:.2f}\n"
+            f"🎯 Take Profit 1 (TP1): ${data['tp1']:.2f}\n"
+            f"🚀 Take Profit 2 (TP2): ${data['tp2']:.2f}\n\n"
+            f"📐 RISK MANAGEMENT (Balance: ${data['balance']:.2f}):\n"
+            f"⚖️ Safe Lot Size: {data['lot_size']} Lot\n\n"
             f"⚡ Direct Exness App me trade enter karein!"
         )
     else:
-        msg += "\n⏳ **AI Mentor Status:** Market range-bound hai. Clear confirmation par alert aayega!"
+        msg += "\n⏳ Status: Market range-bound hai. Clear setup par auto-alert aayega!"
         
-    await update.message.reply_text(msg, parse_mode='Markdown')
+    await update.message.reply_text(msg)
 
 async def auto_market_monitor(context: ContextTypes.DEFAULT_TYPE):
     global last_signal
@@ -185,17 +184,17 @@ async def auto_market_monitor(context: ContextTypes.DEFAULT_TYPE):
     if data and data['action'] in ["🟢 STRONG BUY", "🔴 STRONG SELL"]:
         if data['action'] != last_signal:
             alert_msg = (
-                f"🚨 **SUPER AI HIGH-CONFIRMATION TRADE ALERT** 🚨\n\n"
-                f"🪙 Pair: **Gold (XAU/USD)**\n"
-                f"💥 Signal: **{data['action']}**\n"
-                f"💵 Entry: **${data['price']:.2f}**\n\n"
-                f"🛑 SL: **${data['sl']:.2f}**\n"
-                f"🎯 TP1: **${data['tp1']:.2f}**\n"
-                f"🚀 TP2: **${data['tp2']:.2f}**\n\n"
-                f"📐 Safe Lot Size: **{data['lot_size']}**\n"
+                f"🚨 SUPER AI TRADE ALERT 🚨\n\n"
+                f"🪙 Pair: Gold (XAU/USD)\n"
+                f"💥 Signal: {data['action']}\n"
+                f"💵 Entry: ${data['price']:.2f}\n\n"
+                f"🛑 SL: ${data['sl']:.2f}\n"
+                f"🎯 TP1: ${data['tp1']:.2f}\n"
+                f"🚀 TP2: ${data['tp2']:.2f}\n\n"
+                f"📐 Safe Lot Size: {data['lot_size']}\n"
                 f"⚡ Immediate Exness trade place karein!"
             )
-            await context.bot.send_message(chat_id=chat_id, text=alert_msg, parse_mode='Markdown')
+            await context.bot.send_message(chat_id=chat_id, text=alert_msg)
             last_signal = data['action']
 
 def main():
