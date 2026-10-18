@@ -19,146 +19,75 @@ def run_flask():
     port = int(os.environ.get("PORT", 8080))
     app_web.run(host='0.0.0.0', port=port)
 
-# Aapka Naya Bot Token
+# Token from Environment or Fallback
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8790173607:AAFgcstrywXtbMMfADLi9R3xHLnY6cbkjA8")
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-last_signal = None
-
-def get_advanced_gold_setup():
+def get_gold_status():
     try:
-        # Fetch 15-minute candle data for Gold
-        df = yf.download(tickers='GC=F', period='5d', interval='15m')
+        df = yf.download(tickers='GC=F', period='2d', interval='5m')
         if df.empty:
-            df = yf.download(tickers='XAUUSD=X', period='5d', interval='15m')
+            df = yf.download(tickers='XAUUSD=X', period='2d', interval='5m')
             
         if df.empty:
-            return None
-        
+            return "Market price fetch nahi ho pa raha hai. Please try again."
+            
         close = df['Close'].squeeze()
         high = df['High'].squeeze()
         low = df['Low'].squeeze()
         
-        # Technical Indicators
-        rsi = ta.momentum.RSIIndicator(close=close, window=14).rsi().iloc[-1]
-        ema_fast = ta.trend.EMAIndicator(close=close, window=9).ema_indicator().iloc[-1]
-        ema_slow = ta.trend.EMAIndicator(close=close, window=21).ema_indicator().iloc[-1]
-        atr = ta.volatility.AverageTrueRange(high=high, low=low, close=close, window=14).average_true_range().iloc[-1]
-        
         current_price = float(close.iloc[-1])
-        rsi_val = float(rsi)
+        rsi = float(ta.momentum.RSIIndicator(close=close, window=14).rsi().iloc[-1])
+        atr = float(ta.volatility.AverageTrueRange(high=high, low=low, close=close, window=14).average_true_range().iloc[-1])
         
-        action = "WAIT"
-        sl = 0.0
-        tp1 = 0.0
-        tp2 = 0.0
+        signal = "NEUTRAL (WAIT)"
+        sl = current_price
+        tp = current_price
         
-        # Strategy Logic: EMA Crossover + RSI Confirmation
-        if rsi_val < 40 and ema_fast > ema_slow:
-            action = "🟢 BUY"
+        if rsi < 35:
+            signal = "🟢 BUY NOW"
             sl = current_price - (1.5 * atr)
-            tp1 = current_price + (1.5 * atr)
-            tp2 = current_price + (3.0 * atr)
-        elif rsi_val > 60 and ema_fast < ema_slow:
-            action = "🔴 SELL"
+            tp = current_price + (2.5 * atr)
+        elif rsi > 65:
+            signal = "🔴 SELL NOW"
             sl = current_price + (1.5 * atr)
-            tp1 = current_price - (1.5 * atr)
-            tp2 = current_price - (3.0 * atr)
+            tp = current_price - (2.5 * atr)
             
-        return {
-            "price": current_price,
-            "rsi": rsi_val,
-            "action": action,
-            "sl": sl,
-            "tp1": tp1,
-            "tp2": tp2,
-            "atr": atr
-        }
+        msg = (
+            f"🎯 **EXNESS GOLD (XAU/USD) ANALYSIS**\n\n"
+            f"💵 Live Price: **${current_price:.2f}**\n"
+            f"📉 RSI: **{rsi:.2f}**\n"
+            f"📊 Signal: **{signal}**\n\n"
+        )
+        if signal != "NEUTRAL (WAIT)":
+            msg += f"🛑 Recommended SL: **${sl:.2f}**\n🎯 Recommended TP: **${tp:.2f}**\n"
+        else:
+            msg += "💡 Abhi clear entry nahi hai, market wait karne ka ishara kar rahi hai."
+            
+        return msg
     except Exception as e:
-        logging.error(f"Error calculating setup: {e}")
-        return None
+        return f"Error: {e}"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    
-    # Clean previous background tasks
-    jobs = context.job_queue.get_jobs_by_name(str(chat_id))
-    for job in jobs:
-        job.schedule_removal()
-        
-    # Auto-check market every 60 seconds
-    context.job_queue.run_repeating(auto_market_monitor, interval=60, first=3, chat_id=chat_id, name=str(chat_id))
-    
     await update.message.reply_text(
-        "⚡ **Exness Sukti Gold AI Active!**\n\n"
-        "✅ Real-Time Gold Market Monitoring Active.\n"
-        "Bot continuous market scan karke exact **SL / TP Setup** ke saath trade alert bhejega.\n\n"
-        "👉 Live Status Check Karein: /status"
+        "👋 **Namaste! Exness Sukti Gold AI Active Hai!**\n\n"
+        "Main aapka Gold (XAUUSD) AI Trading Mentor hu.\n\n"
+        "👉 Check Market & Trade Signal: /status"
     )
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    data = get_advanced_gold_setup()
-    if not data:
-        await update.message.reply_text("Market data abhi fetch hone me time lag raha hai, please 1-2 min baad try karein.")
-        return
-        
-    price = data['price']
-    rsi = data['rsi']
-    action = data['action']
-    
-    if action in ["🟢 BUY", "🔴 SELL"]:
-        msg = (
-            f"🎯 **EXNESS GOLD TRADING SETUP**\n\n"
-            f"🪙 Pair: **XAU/USD (Gold)**\n"
-            f"📊 Action: **{action} NOW**\n"
-            f"💵 Entry Price: **${price:.2f}**\n\n"
-            f"🛑 Stop Loss (SL): **${data['sl']:.2f}**\n"
-            f"🎯 Take Profit 1 (TP1): **${data['tp1']:.2f}**\n"
-            f"🚀 Take Profit 2 (TP2): **${data['tp2']:.2f}**\n\n"
-            f"📉 RSI: {rsi:.2f}\n"
-            f"💡 Recommended Lot Size: **0.01 - 0.02** per $100 Balance"
-        )
-    else:
-        msg = (
-            f"📊 **Exness Gold (XAU/USD) Live Status**\n\n"
-            f"💵 Live Price: **${price:.2f}**\n"
-            f"📉 RSI (14): **{rsi:.2f}**\n"
-            f"💡 Current Status: **NEUTRAL (WAIT FOR CLEAR SETUP)**\n\n"
-            f"⏳ AI Mentor continuous watch kar raha hai. Jaise hi high-probability setup milega, auto-alert aa jayega!"
-        )
-        
+    msg = get_gold_status()
     await update.message.reply_text(msg, parse_mode='Markdown')
-
-async def auto_market_monitor(context: ContextTypes.DEFAULT_TYPE):
-    global last_signal
-    chat_id = context.job.chat_id
-    
-    data = get_advanced_gold_setup()
-    if data and data['action'] in ["🟢 BUY", "🔴 SELL"]:
-        if data['action'] != last_signal:
-            alert_msg = (
-                f"🚨 **NEW EXNESS TRADE ALERT** 🚨\n\n"
-                f"🪙 Pair: **Gold (XAU/USD)**\n"
-                f"💥 Signal: **{data['action']}**\n"
-                f"💵 Entry: **${data['price']:.2f}**\n\n"
-                f"🛑 SL: **${data['sl']:.2f}**\n"
-                f"🎯 TP1: **${data['tp1']:.2f}**\n"
-                f"🚀 TP2: **${data['tp2']:.2f}**\n\n"
-                f"⚡ Exness App open karke immediate trade place kar sakte hain!"
-            )
-            await context.bot.send_message(chat_id=chat_id, text=alert_msg, parse_mode='Markdown')
-            last_signal = data['action']
 
 def main():
     threading.Thread(target=run_flask, daemon=True).start()
     
     app = Application.builder().token(TELEGRAM_TOKEN).build()
-    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("status", status))
     
-    print("Sukti Bot is running smoothly...")
+    print("Bot started polling...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
