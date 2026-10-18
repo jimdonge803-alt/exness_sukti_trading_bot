@@ -13,13 +13,14 @@ app_web = Flask(__name__)
 
 @app_web.route('/')
 def home():
-    return "Exness Gold AI Mentor Bot is Running Live!"
+    return "Exness Sukti Gold AI Bot is Active!"
 
 def run_flask():
     port = int(os.environ.get("PORT", 8080))
     app_web.run(host='0.0.0.0', port=port)
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8969292356:AAFovvKTKKf1nUG1l5IYBDZtutwPsJMalJE")
+# Aapka Naya Bot Token
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8790173607:AAFgcstrywXtbMMfADLi9R3xHLnY6cbkjA8")
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -54,12 +55,12 @@ def get_advanced_gold_setup():
         tp2 = 0.0
         
         # Strategy Logic: EMA Crossover + RSI Confirmation
-        if rsi_val < 38 and ema_fast > ema_slow:
+        if rsi_val < 40 and ema_fast > ema_slow:
             action = "🟢 BUY"
             sl = current_price - (1.5 * atr)
             tp1 = current_price + (1.5 * atr)
             tp2 = current_price + (3.0 * atr)
-        elif rsi_val > 62 and ema_fast < ema_slow:
+        elif rsi_val > 60 and ema_fast < ema_slow:
             action = "🔴 SELL"
             sl = current_price + (1.5 * atr)
             tp1 = current_price - (1.5 * atr)
@@ -90,16 +91,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.job_queue.run_repeating(auto_market_monitor, interval=60, first=3, chat_id=chat_id, name=str(chat_id))
     
     await update.message.reply_text(
-        "⚡ **Exness Gold AI Trading Mentor Active!**\n\n"
-        "✅ Live Market Monitoring Started (15M Timeframe).\n"
-        "Bot continuous market scan karega aur proper **SL / TP Setup** ke saath alert bhejega.\n\n"
-        "👉 Check Live Status: /status"
+        "⚡ **Exness Sukti Gold AI Active!**\n\n"
+        "✅ Real-Time Gold Market Monitoring Active.\n"
+        "Bot continuous market scan karke exact **SL / TP Setup** ke saath trade alert bhejega.\n\n"
+        "👉 Live Status Check Karein: /status"
     )
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = get_advanced_gold_setup()
     if not data:
-        await update.message.reply_text("Market data abhi unavailable hai, please thodi der me try karein.")
+        await update.message.reply_text("Market data abhi fetch hone me time lag raha hai, please 1-2 min baad try karein.")
         return
         
     price = data['price']
@@ -124,7 +125,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💵 Live Price: **${price:.2f}**\n"
             f"📉 RSI (14): **{rsi:.2f}**\n"
             f"💡 Current Status: **NEUTRAL (WAIT FOR CLEAR SETUP)**\n\n"
-            f"⏳ AI Mentor continuous market watch kar raha hai. Jaise hi confirm setup milega, auto-alert aa jayega!"
+            f"⏳ AI Mentor continuous watch kar raha hai. Jaise hi high-probability setup milega, auto-alert aa jayega!"
         )
         
     await update.message.reply_text(msg, parse_mode='Markdown')
@@ -157,7 +158,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("status", status))
     
-    print("Bot is running smoothly...")
+    print("Sukti Bot is running smoothly...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
